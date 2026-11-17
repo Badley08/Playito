@@ -27,7 +27,6 @@ void MediaPlayer::initialize(WakeCallback wake_callback) {
         set_option("vo", "libmpv");
         set_option("gpu-api", "opengl");
         set_option("hwdec", "auto-safe");
-        set_option("profile", "fast");
         set_option("vd-lavc-threads", "2");
         set_option("osc", "no");
         set_option("msg-level", "all=warn");

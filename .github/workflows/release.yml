@@ -19,7 +19,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config libmpv-dev libglfw3-dev libgl1-mesa-dev libcurl4-openssl-dev libssl-dev nlohmann-json3-dev
+          sudo apt-get install -y build-essential cmake pkg-config libmpv-dev libglfw3-dev libgl1-mesa-dev libcurl4-openssl-dev libssl-dev nlohmann-json3-dev xvfb
 
       - name: Configure
         env:
@@ -51,9 +51,27 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 ./appimagetool \
             AppDir "Playito-x86_64.AppImage"
 
+      - name: Smoke test AppImage startup
+        run: |
+          set +e
+          APPIMAGE_EXTRACT_AND_RUN=1 LIBGL_ALWAYS_SOFTWARE=1 \
+            xvfb-run -a sh -c 'timeout 5s ./Playito-x86_64.AppImage'
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ]; then
+            echo "AppImage exited unexpectedly with status $status"
+            exit 1
+          fi
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" Playito-x86_64.AppImage \
-            --title "Playito ${GITHUB_REF_NAME}" --generate-notes
+          notes_file=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [[ -f "${notes_file}" ]]; then
+            gh release create "${GITHUB_REF_NAME}" Playito-x86_64.AppImage \
+              --title "Playito ${GITHUB_REF_NAME}" --notes-file "${notes_file}"
+          else
+            gh release create "${GITHUB_REF_NAME}" Playito-x86_64.AppImage \
+              --title "Playito ${GITHUB_REF_NAME}" --generate-notes
+          fi

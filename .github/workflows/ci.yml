@@ -20,7 +20,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config libmpv-dev libglfw3-dev libgl1-mesa-dev libcurl4-openssl-dev libssl-dev nlohmann-json3-dev
+          sudo apt-get install -y build-essential cmake pkg-config libmpv-dev libglfw3-dev libgl1-mesa-dev libcurl4-openssl-dev libssl-dev nlohmann-json3-dev xvfb
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
@@ -30,3 +30,14 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Smoke test application startup
+        run: |
+          set +e
+          LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a sh -c 'timeout 5s ./build/playito'
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ]; then
+            echo "Playito exited unexpectedly with status $status"
+            exit 1
+          fi
