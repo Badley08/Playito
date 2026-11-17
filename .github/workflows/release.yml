@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Build and publish AppImage
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libmpv-dev libglfw3-dev libgl1-mesa-dev libcurl4-openssl-dev libssl-dev nlohmann-json3-dev
+
+      - name: Configure
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DPLAYITO_VERSION="$version" -DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=generic"
+
+      - name: Build and test
+        run: |
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+
+      - name: Package AppImage
+        run: |
+          mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps
+          cp assets/playito.svg AppDir/usr/share/icons/hicolor/scalable/apps/playito.svg
+          curl --fail --location --retry 3 \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+            --output linuxdeploy
+          curl --fail --location --retry 3 \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage \
+            --output appimagetool
+          chmod +x linuxdeploy appimagetool
+          APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy --appdir AppDir \
+            --executable build/playito \
+            --desktop-file packaging/playito.desktop \
+            --icon-file assets/playito.svg
+          APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 ./appimagetool \
+            AppDir "Playito-x86_64.AppImage"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" Playito-x86_64.AppImage \
+            --title "Playito ${GITHUB_REF_NAME}" --generate-notes
