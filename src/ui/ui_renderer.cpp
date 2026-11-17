@@ -422,7 +422,7 @@ void UiRenderer::render_browser(const UiState& state, int width, int height) {
     const float rows_top = panel_y + 104.0F;
     const float row_height = 34.0F;
     const auto visible_count = static_cast<std::size_t>(
-    std::max(0.0, std::floor((panel_height - 128.0F) / row_height)));
+        std::max(0.0F, std::floor((panel_height - 128.0F) / row_height)));
     const std::vector<BrowserEntry> empty_entries;
     const auto& entries =
         state.browser_entries ? *state.browser_entries : empty_entries;
